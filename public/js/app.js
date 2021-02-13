@@ -90,6 +90,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
+/* harmony import */ var _helpers__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../helpers */ "./resources/js/helpers.js");
 //
 //
 //
@@ -110,6 +111,7 @@ __webpack_require__.r(__webpack_exports__);
 //
 //
 //
+
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({
   props: {
     date: {
@@ -121,55 +123,53 @@ __webpack_require__.r(__webpack_exports__);
     return {
       dateName: null,
       dates: [],
-      days: [],
       monthNames: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
     };
   },
   mounted: function mounted() {
     var currentDate = new Date();
     var plusOneMonth = currentDate.setMonth(currentDate.getMonth() + 1);
-    this.dates = this.getDaysArray(new Date(), plusOneMonth);
+    this.dates = (0,_helpers__WEBPACK_IMPORTED_MODULE_0__.getDaysArray)(new Date(), plusOneMonth);
     this.getDefaultDateName();
   },
   methods: {
-    watchDate: function watchDate(newVal) {
-      if (newVal.from && newVal.to) {
-        console.log('hello');
-        this.dates = this.getDaysArray(newVal.from, newVal.to);
-        this.dateName = this.getDateName(newVal);
-      }
-    },
-    watchDays: function watchDays(days) {
+    watchDateProps: function watchDateProps(newVal) {
       var _this = this;
 
-      if (days) {
-        var clonedDates = _.clone(this.dates);
+      if (newVal.from && newVal.to) {
+        if (newVal.has_return_data) {
+          this.dates = (0,_helpers__WEBPACK_IMPORTED_MODULE_0__.getDaysArray)(newVal.from, newVal.to);
 
-        days.forEach(function (day) {
-          _.filter(clonedDates, {
-            identifier: _this.getShortDayName(day.date).toLowerCase()
-          }).map(function (date) {
-            return date.name = day.name;
+          _.map(this.dates, function (date) {
+            return date.name = null;
           });
-        });
-        this.dates = clonedDates;
-      }
-    },
-    getDaysArray: function getDaysArray(startDate, endDate) {
-      var dates = [];
-      var currentDate = new Date(startDate);
 
-      while (currentDate <= new Date(endDate)) {
-        dates.push({
-          name: null,
-          date: new Date(currentDate),
-          identifier: this.getShortDayName(currentDate).toLowerCase(),
-          change_date_name: new Date(currentDate).getDate() === 1
-        });
-        currentDate.setDate(currentDate.getDate() + 1);
-      }
+          newVal.days.forEach(function (day) {
+            var identifier = (0,_helpers__WEBPACK_IMPORTED_MODULE_0__.formatDate)(day.date);
 
-      return dates;
+            _.filter(_this.dates, {
+              identifier: identifier
+            }).map(function (date) {
+              return date.name = day.name;
+            });
+
+            var newItem = {
+              name: day.name,
+              date: new Date(day.date),
+              change_date_name: new Date(day.date).getDate() === 1,
+              identifier: identifier
+            };
+
+            _this.$set(_this.dates, _.findIndex(_this.dates, {
+              identifier: identifier
+            }), newItem);
+          });
+        } else {
+          this.dates = (0,_helpers__WEBPACK_IMPORTED_MODULE_0__.getDaysArray)(newVal.from, newVal.to);
+        }
+
+        this.dateName = this.getDateName(newVal);
+      }
     },
     getDateName: function getDateName(date) {
       var dateName;
@@ -203,18 +203,12 @@ __webpack_require__.r(__webpack_exports__);
         this.dateName = this.monthNames[currentDate.getMonth()];
       }
     },
-    getShortDayName: function getShortDayName(date) {
-      return new Date(date).toLocaleString('default', {
-        weekday: 'short'
-      });
-    },
     formatListingDate: function formatListingDate(date) {
-      return "".concat(date.getDate(), " ").concat(this.getShortDayName(date));
+      return "".concat(date.getDate(), " ").concat((0,_helpers__WEBPACK_IMPORTED_MODULE_0__.getShortDayName)(date));
     }
   },
   watch: {
-    date: 'watchDate',
-    days: 'watchDays'
+    date: 'watchDateProps'
   }
 });
 
@@ -254,6 +248,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
+/* harmony import */ var _helpers__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../helpers */ "./resources/js/helpers.js");
 //
 //
 //
@@ -341,6 +336,8 @@ __webpack_require__.r(__webpack_exports__);
 //
 //
 //
+//
+
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({
   data: function data() {
     return {
@@ -353,27 +350,29 @@ __webpack_require__.r(__webpack_exports__);
       submitting: false,
       days: [{
         value: 'mon',
-        identifier: 1
+        enable: true
       }, {
         value: 'tue',
-        identifier: 2
+        enable: true
       }, {
         value: 'wed',
-        identifier: 3
+        enable: true
       }, {
         value: 'thu',
-        identifier: 4
+        enable: true
       }, {
         value: 'fri',
-        identifier: 5
+        enable: true
       }, {
         value: 'sat',
-        identifier: 6
+        enable: true
       }, {
         value: 'sun',
-        identifier: 0
+        enable: true
       }],
-      minDate: null
+      minDate: null,
+      hasReturnData: false,
+      daysData: []
     };
   },
   methods: {
@@ -382,16 +381,20 @@ __webpack_require__.r(__webpack_exports__);
 
       this.submitting = true;
       this.form.post('api/events').then(function (response) {
+        _this.hasReturnData = true;
+        _this.daysData = _.map(response.days, function (day) {
+          return {
+            date: day.date,
+            name: response.name,
+            from: response.from,
+            to: response.to
+          };
+        });
+
         _this.$root.$emit('alert', {
           show: true
         });
 
-        _this.$refs.calendar.days = _.map(response.days, function (day) {
-          return {
-            date: day.date,
-            name: response.name
-          };
-        });
         setTimeout(function () {
           return _this.submitting = false;
         }, 500);
@@ -402,13 +405,39 @@ __webpack_require__.r(__webpack_exports__);
     clearErrors: function clearErrors() {
       return this.form.errors.clearAll();
     },
-    watchFrom: function watchFrom(newVal) {
-      this.minDate = new Date(newVal);
-      this.form.to = null;
+    watchForm: function watchForm(newVal) {
+      var _this2 = this;
+
+      this.minDate = new Date(newVal.from);
+
+      if (newVal.from > newVal.to) {
+        this.form.to = null;
+      }
+
+      if (newVal.from && newVal.to) {
+        _.map(this.days, function (day) {
+          return day.enable = false;
+        });
+
+        var dates = _.map((0,_helpers__WEBPACK_IMPORTED_MODULE_0__.getDaysArray)(newVal.from, newVal.to), function (date) {
+          return (0,_helpers__WEBPACK_IMPORTED_MODULE_0__.getShortDayName)(date.identifier);
+        });
+
+        _.uniq(dates).filter(function (date) {
+          _.filter(_this2.days, {
+            value: date.toLowerCase()
+          }).map(function (day) {
+            return day.enable = true;
+          });
+        });
+      }
     }
   },
   watch: {
-    'form.from': 'watchFrom'
+    form: {
+      handler: 'watchForm',
+      deep: true
+    }
   }
 });
 
@@ -496,6 +525,75 @@ __webpack_require__.r(__webpack_exports__);
 vue__WEBPACK_IMPORTED_MODULE_3__.default.component('app', _components_App__WEBPACK_IMPORTED_MODULE_0__.default);
 vue__WEBPACK_IMPORTED_MODULE_3__.default.component('alert', _components_Alert__WEBPACK_IMPORTED_MODULE_1__.default);
 vue__WEBPACK_IMPORTED_MODULE_3__.default.component('calendar', _components_Calendar__WEBPACK_IMPORTED_MODULE_2__.default);
+
+/***/ }),
+
+/***/ "./resources/js/helpers.js":
+/*!*********************************!*\
+  !*** ./resources/js/helpers.js ***!
+  \*********************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "set": () => (/* binding */ set),
+/* harmony export */   "get": () => (/* binding */ get),
+/* harmony export */   "remove": () => (/* binding */ remove),
+/* harmony export */   "getDaysArray": () => (/* binding */ getDaysArray),
+/* harmony export */   "formatDate": () => (/* binding */ formatDate),
+/* harmony export */   "getShortDayName": () => (/* binding */ getShortDayName)
+/* harmony export */ });
+var set = function set(key, value) {
+  return localStorage.setItem(key, JSON.stringify(value));
+};
+var get = function get(key) {
+  try {
+    return JSON.parse(localStorage.getItem(key));
+  } catch (e) {
+    return false;
+  }
+};
+var remove = function remove(key) {
+  return localStorage.removeItem(key);
+};
+var getDaysArray = function getDaysArray(startDate, endDate) {
+  var dates = [];
+  var currentDate = new Date(startDate);
+
+  while (currentDate <= new Date(endDate)) {
+    dates.push({
+      name: null,
+      date: new Date(currentDate),
+      identifier: formatDate(currentDate),
+      change_date_name: new Date(currentDate).getDate() === 1
+    });
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  return dates;
+};
+var formatDate = function formatDate(date) {
+  var dateParse = new Date(date);
+  var month = '' + (dateParse.getMonth() + 1);
+  var day = '' + dateParse.getDate();
+  var year = dateParse.getFullYear();
+
+  if (month.length < 2) {
+    month = '0' + month;
+  }
+
+  if (day.length < 2) {
+    day = '0' + day;
+  }
+
+  return [year, month, day].join('-');
+};
+var getShortDayName = function getShortDayName(date) {
+  return new Date(date).toLocaleString('default', {
+    weekday: 'short'
+  });
+};
 
 /***/ }),
 
@@ -2358,7 +2456,10 @@ var render = function() {
                                   "b-form-checkbox",
                                   {
                                     key: index,
-                                    attrs: { value: day.value },
+                                    attrs: {
+                                      value: day.value,
+                                      disabled: !day.enable
+                                    },
                                     on: { change: _vm.clearErrors }
                                   },
                                   [
@@ -2424,7 +2525,14 @@ var render = function() {
                 [
                   _c("calendar", {
                     ref: "calendar",
-                    attrs: { date: { from: _vm.form.from, to: _vm.form.to } }
+                    attrs: {
+                      date: {
+                        from: _vm.form.from,
+                        to: _vm.form.to,
+                        has_return_data: _vm.hasReturnData,
+                        days: _vm.daysData
+                      }
+                    }
                   })
                 ],
                 1

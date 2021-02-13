@@ -24,7 +24,7 @@ class EventController extends Controller
         $dateFromDays = $this->getDateFromDays($attributes['days'], $dates);
         $days = $this->getDays($dateFromDays);
 
-        $event = Event::updateOrCreate(['slug' => $attributes['slug']], Arr::only($attributes, ['name', 'slug']));
+        $event = Event::updateOrCreate(['slug' => $attributes['slug']], Arr::except($attributes, 'days'));
 
         if (!empty($event->days())) {
             $event->days()->delete();

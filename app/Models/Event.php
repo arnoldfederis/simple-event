@@ -13,6 +13,11 @@ class Event extends Model
 
     protected $guarded = [];
 
+    protected $casts = [
+        'from' => 'date',
+        'to' => 'date'
+    ];
+
     public function days()
     {
         return $this->hasMany(Day::class);
