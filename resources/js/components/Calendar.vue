@@ -19,6 +19,8 @@
 </template>
 
 <script>
+import { formatDate, getDaysArray, getShortDayName } from '../helpers';
+
 export default {
   props: {
     date: {
@@ -31,7 +33,6 @@ export default {
     return {
       dateName: null,
       dates: [],
-      days: [],
       monthNames: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
     }
   },
@@ -39,47 +40,36 @@ export default {
   mounted() {
     let currentDate = new Date();
     const plusOneMonth = currentDate.setMonth(currentDate.getMonth() + 1);
-    this.dates = this.getDaysArray(new Date(), plusOneMonth);
+    this.dates = getDaysArray(new Date(), plusOneMonth);
     this.getDefaultDateName();
   },
 
   methods: {
-    watchDate(newVal) {
+    watchDateProps(newVal) {
       if (newVal.from && newVal.to) {
-        console.log('hello')
-        this.dates = this.getDaysArray(newVal.from, newVal.to);
+        if (newVal.has_return_data) {
+          this.dates = getDaysArray(newVal.from, newVal.to);
+
+          _.map(this.dates, (date) => date.name = null);
+          newVal.days.forEach(day => {
+            let identifier = formatDate(day.date);
+            _.filter(this.dates, {identifier}).map((date) => date.name = day.name)
+
+            let newItem = {
+              name: day.name,
+              date: new Date(day.date),
+              change_date_name: new Date(day.date).getDate() === 1,
+              identifier
+            }
+
+            this.$set(this.dates, _.findIndex(this.dates, {identifier}), newItem);
+          })
+        } else {
+          this.dates = getDaysArray(newVal.from, newVal.to);
+        }
+
         this.dateName = this.getDateName(newVal);
       }
-    },
-
-    watchDays(days) {
-      if (days) {
-        let clonedDates = _.clone(this.dates);
-
-        days.forEach(day => {
-          _.filter(clonedDates, {identifier: this.getShortDayName(day.date).toLowerCase()}).map((date) => date.name = day.name)
-        })
-
-        this.dates = clonedDates;
-      }
-    },
-
-    getDaysArray(startDate, endDate) {
-      let dates = [];
-      let currentDate = new Date(startDate);
-
-      while (currentDate <= new Date(endDate)) {
-        dates.push({
-          name: null,
-          date: new Date(currentDate),
-          identifier: this.getShortDayName(currentDate).toLowerCase(),
-          change_date_name: new Date(currentDate).getDate() === 1
-        });
-
-        currentDate.setDate(currentDate.getDate() + 1);
-      }
-
-      return dates;
     },
 
     getDateName(date) {
@@ -114,18 +104,13 @@ export default {
       }
     },
 
-    getShortDayName(date) {
-      return new Date(date).toLocaleString('default', { weekday: 'short' });
-    },
-
     formatListingDate(date) {
-      return `${date.getDate()} ${this.getShortDayName(date)}`;
+      return `${date.getDate()} ${getShortDayName(date)}`;
     }
   },
 
   watch: {
-    date: 'watchDate',
-    days: 'watchDays'
+    date: 'watchDateProps'
   }
 }
 </script>

@@ -57,6 +57,7 @@
                       v-for="(day, index) in days"
                       :key="index"
                       :value="day.value"
+                      :disabled="!day.enable"
                       @change="clearErrors"
                   >
                     <span class="text-capitalize">{{ day.value }}</span>
@@ -78,7 +79,7 @@
         </b-col>
 
         <b-col lg="6">
-          <calendar ref="calendar" :date="{ from: form.from, to: form.to }" />
+          <calendar ref="calendar" :date="{ from: form.from, to: form.to, has_return_data: hasReturnData, days: daysData }" />
         </b-col>
       </b-row>
     </b-card>
@@ -86,6 +87,8 @@
 </template>
 
 <script>
+import { getDaysArray, getShortDayName } from '../helpers';
+
 export default {
   data() {
     return {
@@ -97,15 +100,17 @@ export default {
       }),
       submitting: false,
       days: [
-        {value: 'mon', identifier: 1},
-        {value: 'tue', identifier: 2},
-        {value: 'wed', identifier: 3},
-        {value: 'thu', identifier: 4},
-        {value: 'fri', identifier: 5},
-        {value: 'sat', identifier: 6},
-        {value: 'sun', identifier: 0}
+        {value: 'mon', enable: true},
+        {value: 'tue', enable: true},
+        {value: 'wed', enable: true},
+        {value: 'thu', enable: true},
+        {value: 'fri', enable: true},
+        {value: 'sat', enable: true},
+        {value: 'sun', enable: true}
       ],
-      minDate: null
+      minDate: null,
+      hasReturnData: false,
+      daysData: []
     }
   },
 
@@ -115,10 +120,13 @@ export default {
 
       this.form.post('api/events')
       .then((response) => {
-        this.$root.$emit('alert', {show: true})
-        this.$refs.calendar.days = _.map(response.days, (day) => {
-          return {date: day.date, name: response.name};
+        this.hasReturnData = true;
+
+        this.daysData = _.map(response.days, (day) => {
+          return {date: day.date, name: response.name, from: response.from, to: response.to};
         });
+
+        this.$root.$emit('alert', {show: true})
         setTimeout(() => this.submitting = false, 500);
       })
       .catch(() => this.submitting = false);
@@ -128,14 +136,31 @@ export default {
       return this.form.errors.clearAll()
     },
 
-    watchFrom(newVal) {
-      this.minDate = new Date(newVal)
-      this.form.to = null;
+    watchForm(newVal) {
+      this.minDate = new Date(newVal.from)
+      if (newVal.from > newVal.to) {
+        this.form.to = null;
+      }
+
+      if (newVal.from && newVal.to) {
+        _.map(this.days, (day) => day.enable = false);
+
+        let dates = _.map(getDaysArray(newVal.from, newVal.to), (date) => {
+          return getShortDayName(date.identifier);
+        });
+
+        _.uniq(dates).filter((date) => {
+          _.filter(this.days, {value: date.toLowerCase()}).map((day) => day.enable = true);
+        });
+      }
     }
   },
 
   watch: {
-    'form.from': 'watchFrom'
+    form: {
+      handler: 'watchForm',
+      deep: true
+    }
   }
 }
 </script>
